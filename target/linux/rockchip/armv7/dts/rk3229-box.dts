@@ -8,7 +8,7 @@
 
 	memory@60000000 {
 		device_type = "memory";
-		reg = <0x60000000 0x40000000>; // Sesuaikan dengan RAM
+		reg = <0x60000000 0x80000000>; // Sesuaikan dengan RAM
 	};
 
 	vcc_wifi: regulator-wifi {
