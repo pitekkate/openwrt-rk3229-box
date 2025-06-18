@@ -1,0 +1,22 @@
+--- a/drivers/net/wireless/sv6x5x/sv6x5x.h
++++ b/drivers/net/wireless/sv6x5x/sv6x5x.h
+@@ -100,6 +100,7 @@
+ #define SV6150_PID	0x6150
+ #define SV6152_PID	0x6152
+ #define SV6154_PID	0x6154
++#define SV6158_PID	0x6158
+ 
+ #define SV6x5x_FW_PATH	"sv6x5x/sv6x5x-fw.bin"
+ 
+--- a/drivers/net/wireless/sv6x5x/sv6x5x_core.c
++++ b/drivers/net/wireless/sv6x5x/sv6x5x_core.c
+@@ -2000,6 +2000,9 @@
+ 	case SV6154_PID:
+ 		strcpy(priv->chip_name, "SV6154");
+ 		break;
++	case SV6158_PID:
++		strcpy(priv->chip_name, "SV6158");
++		break;
+ 	default:
+ 		strcpy(priv->chip_name, "Unknown");
+ 		break;
