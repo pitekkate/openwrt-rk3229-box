@@ -23,6 +23,17 @@ define U-Boot/Default
   HIDDEN:=1
 endef
 
+#Rk322x Boards
+
+define U-Boot/rk3229_box
+  NAME:=RK3229 Box
+  BUILD_DEVICES:= \
+     rockchip_rk3229-box
+  DEPENDS:=+PACKAGE_u-boot-rk3229_box:trusted-firmware-a-rk322x
+  ATF:=rk322x_bl31.elf
+  ENVS:=rk322x-env.txt
+  CONFIG:=rk322x_box
+endef
 
 # RK3308 boards
 
@@ -314,6 +325,7 @@ define U-Boot/rock5a-rk3588s
 endef
 
 UBOOT_TARGETS := \
+  rockchip_rk3229-box\
   nanopc-t4-rk3399 \
   nanopi-r4s-rk3399 \
   rock-4c-plus-rk3399 \
