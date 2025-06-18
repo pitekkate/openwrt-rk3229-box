@@ -25,6 +25,14 @@ define Trusted-Firmware-A/Default
   BUILD_TARGET:=rockchip
 endef
 
+# ====== Tambahkan RK3229 di sini ======
+define Trusted-Firmware-A/rk3229
+  BUILD_SUBTARGET:=armv7
+  ATF:=rk32/rk322xh_bl31_v1.49.elf
+  TPL:=rk32/rk322xh_ddr_333MHz_v1.09.bin
+endef
+# ======================================
+
 define Trusted-Firmware-A/rk3308
   BUILD_SUBTARGET:=armv8
   ATF:=rk33/rk3308_bl31_v2.26.elf
@@ -63,12 +71,41 @@ define Trusted-Firmware-A/rk3588-tpl
 endef
 
 TFA_TARGETS:= \
+	rk3229 \  # Tambahkan RK3229 di sini
 	rk3308 \
 	rk3308-rock-pi-s \
 	rk3566 \
 	rk3568 \
 	rk3568-e25 \
 	rk3588-tpl
+
+# ====== Tambahkan download untuk RK3229 jika diperlukan ======
+ifeq ($(BUILD_VARIANT),rk3229)
+  ATF_FILE:=rk322xh_bl31_v1.49.elf
+  TPL_FILE:=rk322xh_ddr_333MHz_v1.09.bin
+
+  define Download/rk3229-atf
+    FILE:=$(ATF_FILE)
+    URL:=https://github.com/rockchip-linux/rkbin/raw/$(PKG_SOURCE_VERSION)/bin/rk32/
+    HASH:=skip  # Ganti dengan hash sebenarnya jika perlu
+  endef
+
+  define Download/rk3229-tpl
+    FILE:=$(TPL_FILE)
+    URL:=https://github.com/rockchip-linux/rkbin/raw/$(PKG_SOURCE_VERSION)/bin/rk32/
+    HASH:=skip  # Ganti dengan hash sebenarnya jika perlu
+  endef
+
+  define Build/Prepare
+	$(eval $(call Download,rk3229-atf))
+	$(eval $(call Download,rk3229-tpl))
+	$(call Build/Prepare/Default)
+
+	$(CP) $(DL_DIR)/$(ATF_FILE) $(PKG_BUILD_DIR)/bin/rk32/
+	$(CP) $(DL_DIR)/$(TPL_FILE) $(PKG_BUILD_DIR)/bin/rk32/
+  endef
+endif
+# ============================================================
 
 ifeq ($(BUILD_VARIANT),rk3308-rock-pi-s)
   TPL_FILE:=rk3308_ddr_589MHz_uart0_m0_v2.07.bin
@@ -111,7 +148,9 @@ define Package/trusted-firmware-a/install
 ifneq ($(ATF),)
 	$(CP) $(PKG_BUILD_DIR)/bin/$(ATF) $(STAGING_DIR_IMAGE)/
 endif
+ifneq ($(TPL),)
 	$(CP) $(PKG_BUILD_DIR)/bin/$(TPL) $(STAGING_DIR_IMAGE)/
+endif
 endef
 
 $(eval $(call BuildPackage/Trusted-Firmware-A))
