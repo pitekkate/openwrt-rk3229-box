@@ -1,0 +1,34 @@
+/dts-v1/;
+#include "rk322x.dtsi"
+#include "rk322x-box.dtsi" // Jika ada
+
+/ {
+    model = "Generic RK3229 TV Box";
+    compatible = "rockchip,rk3229";
+
+    memory@60000000 {
+        device_type = "memory";
+        reg = <0x60000000 0x40000000>; // Sesuaikan dengan RAM perangkat
+    };
+
+    chosen {
+        bootargs = "earlyprintk console=ttyS2,1500000";
+    };
+};
+
+&gmac {
+    phy-mode = "rmii";
+    status = "okay";
+};
+
+&emmc {
+    status = "okay";
+};
+
+&sdio {
+    status = "okay";
+    wifi@101 {
+        compatible = "rtl8189etv"; // Ganti dengan chip Wi-Fi yang sesuai
+        reg = <1>;
+    };
+};
