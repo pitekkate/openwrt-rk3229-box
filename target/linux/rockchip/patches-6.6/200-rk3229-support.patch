@@ -1,0 +1,18 @@
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -1000,6 +1000,7 @@
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
+        rk3036-evb.dtb \
+        rk3066a-mk808.dtb \
++       rk3229-box.dtb \
+        rk3288-veyron.dtb
+
+--- a/arch/arm/mach-rockchip/rk3228.c
++++ b/arch/arm/mach-rockchip/rk3228.c
+@@ -100,6 +100,7 @@
+
+ static const char * const rk3228_dt_compat[] __initconst = {
+        "rockchip,rk3228",
++       "rockchip,rk3229",
+        NULL,
+ };
