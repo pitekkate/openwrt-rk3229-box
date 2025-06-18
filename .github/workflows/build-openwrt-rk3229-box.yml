@@ -27,6 +27,11 @@ jobs:
           ref: rk3229
           submodules: recursive
 
+      - name: Clean previous build artifacts
+        run: |
+          make distclean
+          rm -rf tmp/ build_dir/ staging_dir/ bin/
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -56,14 +61,10 @@ jobs:
             libcrypt-dev \
             jq \
             util-linux \
-            python3-venv  # Pengganti python3-distutils
+            python3-venv
 
-          # Perbaikan untuk Python distutils
-          if [ ! -f /usr/lib/python3.10/distutils/__init__.py ]; then
-            echo "Membuat symlink untuk distutils"
-            sudo mkdir -p /usr/lib/python3.10/distutils
-            sudo ln -s /usr/share/pyshared/setuptools/distutils.py /usr/lib/python3.10/distutils/__init__.py
-          fi
+          sudo mkdir -p /usr/lib/python3.10/distutils
+          sudo ln -sf /usr/share/pyshared/setuptools/distutils.py /usr/lib/python3.10/distutils/__init__.py || true
 
       - name: Setup environment variables
         run: |
@@ -84,7 +85,6 @@ jobs:
           echo "CONFIG_LUCI_LANG_en=y" >> .config
           echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
           
-          # Pilih versi kernel
           if [ "${{ github.event.inputs.kernel_version }}" == "6.12" ]; then
             echo "CONFIG_LINUX_6_12=y" >> .config
             KERNEL_VER="6.12"
@@ -106,13 +106,14 @@ jobs:
             make defconfig
           else
             echo "::error::Kernel config $KERNEL_VER not found!"
-            echo "Available config files:"
             find target/linux/rockchip/armv7 -name 'config-*'
             exit 1
           fi
 
       - name: Build firmware
-        run: make -j$(($(nproc) + 1)) V=s
+        run: |
+          export FORCE_UNSAFE_CONFIGURE=1
+          make -j$(($(nproc) + 1)) V=s
 
       - name: Collect build artifacts
         if: success()
