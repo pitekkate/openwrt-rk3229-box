@@ -1,0 +1,7 @@
+baudrate=1500000
+bootargs=console=ttyS2,1500000 earlyprintk
+bootcmd=mmc dev 0; ext4load mmc 0:1 0x800800 boot/Image; ext4load mmc 0:1 0x830000 boot/dtb; booti 0x800800 - 0x830000
+bootdelay=1
+stderr=serial
+stdin=serial
+stdout=serial
