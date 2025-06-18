@@ -1,0 +1,18 @@
+cat > files/etc/config/wireless << "EOF"
+config wifi-device 'radio0'
+	option type 'mac80211'
+	option path 'platform/sdio_mmc.1/mmc1:0001:1'
+	option channel '6'
+	option hwmode '11g'
+	option disabled '0'
+	option country 'ID'
+	option txpower '18'
+
+config wifi-iface 'default_radio0'
+	option device 'radio0'
+	option network 'lan'
+	option mode 'ap'
+	option ssid 'FK-RK3229'
+	option encryption 'psk2'
+	option key 'kangriscilok'
+EOF

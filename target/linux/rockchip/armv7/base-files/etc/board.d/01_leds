@@ -1,0 +1,2 @@
+ucidef_set_led_netdev "lan" "LAN" "green:lan" "eth0"
+ucidef_set_led_default "power" "POWER" "green:power" "1"

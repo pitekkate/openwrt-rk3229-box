@@ -1,0 +1,58 @@
+/dts-v1/;
+#include "rk322x.dtsi"
+
+/ {
+	model = "RK3229 TV Box";
+	compatible = "rk322x,rk3229-sv6158", "rockchip,rk3229";
+
+	memory@60000000 {
+		device_type = "memory";
+		reg = <0x60000000 0x80000000>; // Sesuaikan dengan RAM
+	};
+
+	vcc_wifi: regulator-wifi {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_wifi";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&gpio3 20 GPIO_ACTIVE_HIGH>; // Contoh GPIO
+		enable-active-high;
+		regulator-always-on;
+	};
+
+	chosen {
+		bootargs = "earlyprintk console=ttyS2,1500000n8";
+	};
+};
+
+&gmac {
+	phy-mode = "rmii";
+	status = "okay";
+};
+
+&sdio {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	bus-width = <4>;
+	max-frequency = <52000000>;
+	cap-sd-highspeed;
+	keep-power-in-suspend;
+	non-removable;
+
+	wifi: wifi@1 {
+		compatible = "siliconmotion,sv6158";
+		reg = <1>;
+		sv6x5x,wifi-pwr-gpio = <&gpio3 20 GPIO_ACTIVE_HIGH>;  // GPIO3_C4
+		sv6x5x,wifi-reset-gpio = <&gpio3 21 GPIO_ACTIVE_LOW>; // GPIO3_C5
+		vcc-supply = <&vcc_wifi>;
+	};
+};
+
+&usb_otg {
+	status = "okay";
+};
+
+&usb_host0_ehci {
+	status = "okay";
+};
