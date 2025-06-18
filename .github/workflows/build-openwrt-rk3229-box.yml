@@ -55,12 +55,14 @@ jobs:
             python3-netifaces \
             libcrypt-dev \
             jq \
-            util-linux
+            util-linux \
+            python3-venv  # Pengganti python3-distutils
 
           # Perbaikan untuk Python distutils
-          if [ ! -f /usr/lib/python3.10/distutils/__init__.py ] && [ -f /usr/lib/python3/dist-packages/setuptools/distutils.py ]; then
+          if [ ! -f /usr/lib/python3.10/distutils/__init__.py ]; then
+            echo "Membuat symlink untuk distutils"
             sudo mkdir -p /usr/lib/python3.10/distutils
-            sudo ln -s /usr/lib/python3/dist-packages/setuptools/distutils.py /usr/lib/python3.10/distutils/__init__.py
+            sudo ln -s /usr/share/pyshared/setuptools/distutils.py /usr/lib/python3.10/distutils/__init__.py
           fi
 
       - name: Setup environment variables
