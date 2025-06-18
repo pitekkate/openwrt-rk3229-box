@@ -1,6 +1,5 @@
 /dts-v1/;
 #include "rk322x.dtsi"
-#include "rk322x-box.dtsi" // Jika ada
 
 / {
 	model = "RK3229 TV Box";
