@@ -1,0 +1,153 @@
+# SPDX-License-Identifier: MIT
+
+name: Build RK3229 OpenWrt Firmware
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - hk1mini
+
+jobs:
+  build_openwrt:
+    name: Build OpenWrt for HK1 Mini Box (RK3229 ARMv7)
+    runs-on: ubuntu-latest
+    env:
+      CONFIG_URL: "https://raw.githubusercontent.com/CodeBoomAI/lede-armb7-rk/hk1mini/Rk3229-box.config" 
+      TARGET_PROFILE: "rk3229-firefly"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Basic Environment
+        run: |
+          sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php || true
+          sudo apt-get purge -y azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* snap* || true
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libncurses5-dev flex bison libssl-dev python3 python3-pip rsync unzip zip \
+            git wget curl bc kmod patch make gcc g++ zlib1g-dev libzstd-dev \
+            libncurses5-dev libreadline-dev libssl-dev libelf-dev liblzma-dev \
+            libudev-dev libusb-1.0-0-dev libcurl4-openssl-dev
+
+      - name: Clone Source Code
+        run: |
+          git clone --depth=1 --branch hk1mini https://github.com/CodeBoomAI/lede-armb7-rk  openwrt
+
+      - name: Update & Install Feeds
+        working-directory: ./openwrt
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Download and Apply .config
+        working-directory: ./openwrt
+        run: |
+          echo "📥 Mengunduh Rk3229-box.config..."
+          curl -sL "$CONFIG_URL" -o .config
+
+          echo "🔧 Memperbaiki konfigurasi target..."
+          echo "CONFIG_TARGET_rk3229=y" >> .config
+          echo "CONFIG_TARGET_rk3229_armv7=y" >> .config
+          echo "CONFIG_TARGET_rk3229_armv7_DEVICE_${TARGET_PROFILE}=y" >> .config
+          echo "CONFIG_KERNEL_PATCHVER=\"6.6\"" >> .config
+          echo "CONFIG_LINUX_6_6=y" >> .config
+
+          make defconfig
+
+      - name: 🔍 Validasi Target Build
+        id: validate_config
+        continue-on-error: true
+        working-directory: ./openwrt
+        run: |
+          echo "🔍 Memvalidasi apakah .config sudah benar untuk RK3229 ARMv7..."
+
+          # Cek apakah target rk3229 & armv7 aktif
+          if grep -q 'CONFIG_TARGET_rk3229=y' .config && \
+             grep -q 'CONFIG_TARGET_rk3229_armv7=y' .config && \
+             grep -q "CONFIG_TARGET_rk3229_armv7_DEVICE_${TARGET_PROFILE}=y" .config; then
+            echo "✅ Target config valid: rk3229/armv7/${TARGET_PROFILE}"
+            exit 0
+          else
+            echo "❌ Target config salah!"
+            echo "Harus memiliki:"
+            echo "  CONFIG_TARGET_rk3229=y"
+            echo "  CONFIG_TARGET_rk3229_armv7=y"
+            echo "  CONFIG_TARGET_rk3229_armv7_DEVICE_rk3229-evb=y"
+            echo ""
+            echo "Isi .config saat ini:"
+            cat .config | grep CONFIG_TARGET_
+            exit 1
+          fi
+
+      - name: Stop Workflow Jika Salah Target
+        if: steps.validate_config.exit_code != 0
+        run: |
+          echo "🛑 Build dibatalkan karena .config salah target."
+          exit 1
+
+      - name: Download Packages
+        working-directory: ./openwrt
+        run: |
+          echo "📦 Mengunduh semua paket..."
+          make download -j$(nproc)
+
+      - name: Build Firmware with Log Output
+        id: build_firmware
+        continue-on-error: true
+        working-directory: ./openwrt
+        run: |
+          echo "🛠️ Mulai build firmware untuk RK3229 (ARMv7)"
+          make -j$(nproc) V=s 2>&1 | tee ../build.log
+
+          echo "🔍 Mencari file firmware hasil build..."
+          find ./bin/targets/rk3229/armv7/ -type f -name "*.img" -o -name "*.tar.gz" || true
+
+      - name: Check Build Status
+        id: check_build
+        shell: bash
+        run: |
+          if grep -q 'make[1-9][0-9]*: ***' ../build.log; then
+            echo "::set-output name=status::failed"
+            exit 1
+          else
+            echo "::set-output name=status::success"
+          fi
+
+      - name: Prepare Artifact
+        if: success()
+        working-directory: ./openwrt
+        run: |
+          mkdir -p ../artifact
+          IMG_FILE=$(find ./bin/targets/rk3229/armv7/ -type f -name '*-sysupgrade.tar.gz' -o -name '*.img' | head -1)
+
+          if [ -f "$IMG_FILE" ]; then
+            echo "✅ Firmware ditemukan: $IMG_FILE"
+            cp $IMG_FILE ../artifact/
+          else
+            echo "❌ Firmware tidak ditemukan!"
+            find ./bin/targets/ -type f
+            exit 1
+          fi
+
+      - name: Upload Firmware
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RK3229_OpenWrt_Firmware
+          path: ./artifact/*
+
+      - name: Upload Error Log (if failed)
+        if: failure() || steps.check_build.outputs.status == 'failed'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-error-log
+          path: ../build.log
+
+      - name: Upload Full Build Log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-build-log
+          path: ../build.log
