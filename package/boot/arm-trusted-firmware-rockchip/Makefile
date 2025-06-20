@@ -24,6 +24,11 @@ define Trusted-Firmware-A/Default
   BUILD_TARGET:=rockchip
 endef
 
+define Trusted-Firmware-A/rk3229
+  BUILD_SUBTARGET:=armv7
+  PLAT=rk3229
+endef
+
 define Trusted-Firmware-A/rk3328
   BUILD_SUBTARGET:=armv8
   PLAT=rk3328
@@ -40,6 +45,7 @@ define Trusted-Firmware-A/rk3588
 endef
 
 TFA_TARGETS:= \
+        rk3229 \
 	rk3328 \
 	rk3399 \
 	rk3588
