@@ -1,0 +1,141 @@
+name: Build OpenWrt for RK3229 (ARMv7)
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_version:
+        description: 'Kernel version (6.6 or 6.12)'
+        required: true
+        default: '6.6'
+        type: choice
+        options:
+        - '6.6'
+        - '6.12'
+  push:
+    branches: [rk3229]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+        with:
+          repository: pitekkate/openwrt-rk3229-box
+          ref: rk3229
+          submodules: recursive
+
+      - name: Clean previous build artifacts
+        run: |
+          make distclean
+          rm -rf tmp/ build_dir/ staging_dir/ bin/
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            flex \
+            bison \
+            g++ \
+            gawk \
+            gcc-multilib \
+            gcc \
+            g++-multilib \
+            gettext \
+            git \
+            libncurses5-dev \
+            libssl-dev \
+            python3-dev \
+            rsync \
+            unzip \
+            zlib1g-dev \
+            file \
+            wget \
+            python3-setuptools \
+            python3-pyelftools \
+            python3-netifaces \
+            libcrypt-dev \
+            jq \
+            util-linux \
+            python3-venv
+
+          sudo mkdir -p /usr/lib/python3.10/distutils
+          sudo ln -sf /usr/share/pyshared/setuptools/distutils.py /usr/lib/python3.10/distutils/__init__.py || true
+
+      - name: Setup environment variables
+        run: |
+          echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
+          echo "PATH=$PATH:/usr/lib/python3.10/distutils" >> $GITHUB_ENV
+
+      - name: Update feeds
+        run: ./scripts/feeds update -a
+
+      - name: Install feeds
+        run: ./scripts/feeds install -a
+
+      - name: Configure for RK3229 (ARMv7)
+        run: |
+          echo "CONFIG_TARGET_rockchip=y" > .config
+          echo "CONFIG_TARGET_rockchip_armv7=y" >> .config
+          echo "CONFIG_TARGET_rockchip_armv7_DEVICE_rockchip_rk3229-box=y" >> .config
+          echo "CONFIG_LUCI_LANG_en=y" >> .config
+          echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
+          
+          if [ "${{ github.event.inputs.kernel_version }}" == "6.12" ]; then
+            echo "CONFIG_LINUX_6_12=y" >> .config
+            KERNEL_VER="6.12"
+          else
+            echo "CONFIG_LINUX_6_6=y" >> .config
+            KERNEL_VER="6.6"
+          fi
+          
+          make defconfig
+
+      - name: Apply kernel-specific configuration
+        run: |
+          KERNEL_VER="${{ github.event.inputs.kernel_version || '6.6' }}"
+          CONFIG_FILE="target/linux/rockchip/armv7/config-$KERNEL_VER"
+          
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "Applying kernel $KERNEL_VER configuration"
+            cat "$CONFIG_FILE" >> .config
+            make defconfig
+          else
+            echo "::error::Kernel config $KERNEL_VER not found!"
+            find target/linux/rockchip/armv7 -name 'config-*'
+            exit 1
+          fi
+
+      - name: Build firmware
+        run: |
+          export FORCE_UNSAFE_CONFIGURE=1
+          make -j$(($(nproc) + 1)) V=s
+
+      - name: Collect build artifacts
+        if: success()
+        run: |
+          mkdir -p artifacts
+          cp bin/targets/rockchip/armv7/*.img.gz artifacts/
+          cp bin/targets/rockchip/armv7/*.manifest artifacts/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-rk3229-${{ github.event.inputs.kernel_version || '6.6' }}-$(date +%Y%m%d)
+          path: artifacts/*
+          retention-days: 7
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-failure-logs
+          path: |
+            logs/
+            .config
+            tmp/
+          retention-days: 7

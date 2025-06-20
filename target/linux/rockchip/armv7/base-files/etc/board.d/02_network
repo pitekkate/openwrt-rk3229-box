@@ -1,0 +1,15 @@
+#!/bin/sh
+
+. /lib/functions/uci-defaults.sh
+
+board=$(board_name)
+
+case "$board" in
+rockchip,rk3229-box)
+    ucidef_set_interface_lan "eth0"
+    ;;
+*)
+    ;;
+esac
+
+exit 0
